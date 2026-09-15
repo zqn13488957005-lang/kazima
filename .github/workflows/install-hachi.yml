@@ -1,0 +1,31 @@
+name: Install Hachi assistant
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  inject:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject Hachi script into index
+        shell: bash
+        run: |
+          if ! grep -q 'hachi-assistant.js' index.html; then
+            python3 - <<'PY'
+from pathlib import Path
+p=Path('index.html')
+s=p.read_text(encoding='utf-8')
+s=s.replace('</body>','<script src="hachi-assistant.js"></script></body>')
+p.write_text(s,encoding='utf-8')
+PY
+          fi
+      - name: Commit change
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Add Hachi assistant to LinguaReader'
+          git push
