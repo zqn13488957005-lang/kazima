@@ -8,29 +8,34 @@ function convertHanja(t,l){if(l!=="ko")return t;const m={"韓國":"한국","大�
    所以不能仅靠第1/第2个 voice 判断男女。这里优先使用
    常见的、可识别的 voice 名称；未知声音不强行标成男女声。 */
 const genderPatterns={
-  male:/\b(male|man|boy|guy|david|daniel|james|george|thomas|ryan|aaron|fred|mark|guy|kevin|guy|matthew|richard|arthur|ryan|gilles|heami|jun|ichiro|naoki|kenji|takumi|yunji|seojun|injoon|sangho|hyunwoo|xiang|yunyang|kangkang|yunxi|david)\b/i,
-  female:/\b(female|woman|girl|zira|samantha|susan|kate|hazel|jenny|aria|sara|victoria|ava|emma|olivia|amy|libby|sonia|nanami|ayumi|haruka|mizuki|sayaka|tomoko|yuna|sunhi|heami|xiaoxiao|xiaoyi|xiaoxuan|yunxi|yunxia|xiaomo)\b/i
+  male:/\b(male|man|boy|guy|david|daniel|james|george|thomas|ryan|aaron|fred|mark|kevin|matthew|richard|arthur|jun|ichiro|naoki|kenji|takumi|keita|otoha|injoon|seojun|sangho|hyunwoo|yunji|xiang|yunyang|kangkang|yunxi|male voice|男声|男)\b/i,
+  female:/\b(female|woman|girl|zira|samantha|susan|kate|hazel|jenny|aria|sara|victoria|ava|emma|olivia|amy|libby|sonia|nanami|ayumi|haruka|mizuki|sayaka|tomoko|yuna|sunhi|heami|xiaoxiao|xiaoyi|xiaoxuan|yunxia|xiaomo|female voice|女声|女)\b/i
 };
 function refreshVoices(){voices=speechSynthesis.getVoices().slice()}
 function langBase(l){return(l||"").toLowerCase().split("-")[0]}
 function voiceGender(v){
   const n=(v.name||"").toLowerCase();
+  /* Windows / Edge 常见日语声音 */
+  if(/nanami/.test(n))return"female";
+  if(/keita|oto(ya|ha)/.test(n))return"male";
+  /* Windows / Edge 常见韩语声音 */
+  if(/heami|sunhi/.test(n))return"female";
+  if(/injoon/.test(n))return"male";
   if(genderPatterns.male.test(n)&&!genderPatterns.female.test(n))return"male";
   if(genderPatterns.female.test(n)&&!genderPatterns.male.test(n))return"female";
   return null;
 }
 function voiceScore(v,lang,gender){
   const vl=(v.lang||"").toLowerCase(),name=(v.name||"").toLowerCase();
-  const base=langBase(lang), want=(lang||"").toLowerCase();
+  const base=langBase(lang),want=(lang||"").toLowerCase();
   if(langBase(vl)!==base)return-10000;
   let s=0;
-  if(vl===want)s+=500;
-  else s+=200;
+  if(vl===want)s+=500;else s+=200;
   const g=voiceGender(v);
   if(g===gender)s+=1000;
   if(g&&g!==gender)s-=1000;
   if(v.localService)s+=20;
-  if(/online|natural|neural|enhanced/i.test(name))s+=5;
+  if(/online|natural|neural|enhanced/.test(name))s+=5;
   return s;
 }
 function voiceForAuto(lang,gender){
