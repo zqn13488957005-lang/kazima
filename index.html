@@ -3,15 +3,48 @@ const $=id=>document.getElementById(id),reader=$("reader"),status=$("status");le
 const langMap={zh:"zh-CN",en:"en-US",ja:"ja-JP",ko:"ko-KR"};
 function detectLang(t){if(/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(t))return"ko";if(/[ぁ-んァ-ヶー]/.test(t))return"ja";if(/[\u4e00-\u9fff]/.test(t))return"zh";return"en"}
 function convertHanja(t,l){if(l!=="ko")return t;const m={"韓國":"한국","大韓民國":"대한민국","日本":"일본","中國":"중국","美國":"미국","學生":"학생","學校":"학교","電話":"전화","時間":"시간","食堂":"식당","朋友":"친구","旅行":"여행","公司":"회사"};for(const a in m)t=t.split(a).join(m[a]);return t}
-const genderPatterns={male:/\b(male|man|david|alex|daniel|james|george|thomas|ryan|aaron|fred|guy|mark|microsoft david|google uk english male|male voice|男声|男)\b/i,female:/\b(female|woman|samantha|zira|susan|kate|hazel|jenny|aria|sara|victoria|ava|google us english female|female voice|女声|女)\b/i};
-function refreshVoices(){voices=speechSynthesis.getVoices()}
+/* ===== 自动语言 + 男女声匹配 =====
+   说明：浏览器的 SpeechSynthesis API 不提供标准 gender 字段，
+   所以不能仅靠第1/第2个 voice 判断男女。这里优先使用
+   常见的、可识别的 voice 名称；未知声音不强行标成男女声。 */
+const genderPatterns={
+  male:/\b(male|man|boy|guy|david|daniel|james|george|thomas|ryan|aaron|fred|mark|guy|kevin|guy|matthew|richard|arthur|ryan|gilles|heami|jun|ichiro|naoki|kenji|takumi|yunji|seojun|injoon|sangho|hyunwoo|xiang|yunyang|kangkang|yunxi|david)\b/i,
+  female:/\b(female|woman|girl|zira|samantha|susan|kate|hazel|jenny|aria|sara|victoria|ava|emma|olivia|amy|libby|sonia|nanami|ayumi|haruka|mizuki|sayaka|tomoko|yuna|sunhi|heami|xiaoxiao|xiaoyi|xiaoxuan|yunxi|yunxia|xiaomo)\b/i
+};
+function refreshVoices(){voices=speechSynthesis.getVoices().slice()}
 function langBase(l){return(l||"").toLowerCase().split("-")[0]}
-function voiceScore(v,lang,gender){const vl=(v.lang||"").toLowerCase(),name=(v.name||"").toLowerCase(),base=langBase(lang),want=lang.toLowerCase();let s=0;if(vl===want)s+=200;else if(vl.startsWith(base))s+=100;else return -999;if(genderPatterns[gender]?.test(name))s+=60;const opposite=gender==='male'?genderPatterns.female:genderPatterns.male;if(opposite?.test(name))s-=120;if(v.localService)s+=5;return s}
-function voiceForAuto(lang,gender){if(!voices.length)refreshVoices();const base=langBase(lang);let list=voices.filter(v=>langBase(v.lang)===base);if(!list.length)list=voices.filter(v=>langBase(v.lang).startsWith(base));if(!list.length)return null;list.sort((a,b)=>voiceScore(b,lang,gender)-voiceScore(a,lang,gender));return list[0]||null}
-function speak(text,lang="auto",gender=null){speechSynthesis.cancel();if(!text)return;const l=lang==="auto"?detectLang(text):lang,u=new SpeechSynthesisUtterance(convertHanja(text,l));u.lang=langMap[l];u.rate=+$('speedSelect').value;if(gender){const v=voiceForAuto(u.lang,gender);if(v)u.voice=v;u.pitch=gender==="male"?0.86:1.14}u.onstart=()=>status.textContent="正在朗读…";u.onend=()=>status.textContent="朗读完成";u.onerror=e=>status.textContent="朗读失败："+e.error;speechSynthesis.speak(u)}
+function voiceGender(v){
+  const n=(v.name||"").toLowerCase();
+  if(genderPatterns.male.test(n)&&!genderPatterns.female.test(n))return"male";
+  if(genderPatterns.female.test(n)&&!genderPatterns.male.test(n))return"female";
+  return null;
+}
+function voiceScore(v,lang,gender){
+  const vl=(v.lang||"").toLowerCase(),name=(v.name||"").toLowerCase();
+  const base=langBase(lang), want=(lang||"").toLowerCase();
+  if(langBase(vl)!==base)return-10000;
+  let s=0;
+  if(vl===want)s+=500;
+  else s+=200;
+  const g=voiceGender(v);
+  if(g===gender)s+=1000;
+  if(g&&g!==gender)s-=1000;
+  if(v.localService)s+=20;
+  if(/online|natural|neural|enhanced/i.test(name))s+=5;
+  return s;
+}
+function voiceForAuto(lang,gender){
+  if(!voices.length)refreshVoices();
+  const candidates=voices.filter(v=>langBase(v.lang)===langBase(lang));
+  if(!candidates.length)return null;
+  const ranked=candidates.map(v=>({v,s:voiceScore(v,lang,gender)})).sort((a,b)=>b.s-a.s);
+  const exact=ranked.find(x=>voiceGender(x.v)===gender);
+  return exact?exact.v:null;
+}
+function speak(text,lang="auto",gender=null){speechSynthesis.cancel();if(!text)return;const l=lang==="auto"?detectLang(text):lang,u=new SpeechSynthesisUtterance(convertHanja(text,l));u.lang=langMap[l];u.rate=+$('speedSelect').value;if(gender){const v=voiceForAuto(u.lang,gender);if(v)u.voice=v;/* 不再用 pitch 冒充性别；没有明确性别的系统声音就使用系统默认 */}u.onstart=()=>status.textContent="正在朗读…";u.onend=()=>status.textContent="朗读完成";u.onerror=e=>status.textContent="朗读失败："+e.error;speechSynthesis.speak(u)}
 function parseDialogue(t){return t.split(/\r?\n/).map(x=>{const m=x.match(/^\s*(A|B|男|女|Male|Female|M|F)\s*[:：-]\s*(.+)$/i);if(!m)return null;const s=m[1].toLowerCase();return{gender:["a","男","male","m"].includes(s)?"male":"female",text:m[2].trim()}}).filter(Boolean)}
 function startDialogue(){clearTimeout(dialogueTimer);speechSynthesis.cancel();const a=parseDialogue(reader.innerText||currentText);if(!a.length){status.textContent="未检测到对话格式，例如 A: Hello / B: Hi";return}dialogueLines=a;dialogueIndex=0;nextDialogue()}
-function nextDialogue(){if(dialogueIndex>=dialogueLines.length){status.textContent="对话朗读完成";$("dialogueProgress").textContent=`完成 · 共 ${dialogueLines.length} 句`;return}const x=dialogueLines[dialogueIndex],auto=$("dialogueAutoLang").checked,l=auto?detectLang(x.text):($('langSelect').value==='auto'?detectLang(x.text):$('langSelect').value),u=new SpeechSynthesisUtterance(convertHanja(x.text,l));u.lang=langMap[l];u.rate=+$('speedSelect').value;const v=voiceForAuto(u.lang,x.gender);if(v)u.voice=v;u.pitch=x.gender==='male'?0.86:1.14;$("dialogueProgress").textContent=`${dialogueIndex+1} / ${dialogueLines.length} · ${x.gender==='male'?'👨 男声':'👩 女声'} · ${langMap[l]} · ${v?v.name:'系统默认语言源'} · 自动`;u.onstart=()=>status.textContent=`正在朗读 ${dialogueIndex+1}/${dialogueLines.length}…`;u.onend=()=>{dialogueIndex++;dialogueTimer=setTimeout(nextDialogue,120)};u.onerror=()=>{dialogueIndex++;dialogueTimer=setTimeout(nextDialogue,120)};speechSynthesis.cancel();speechSynthesis.speak(u)}
+function nextDialogue(){if(dialogueIndex>=dialogueLines.length){status.textContent="对话朗读完成";$("dialogueProgress").textContent=`完成 · 共 ${dialogueLines.length} 句`;return}const x=dialogueLines[dialogueIndex],auto=$("dialogueAutoLang").checked,l=auto?detectLang(x.text):($('langSelect').value==='auto'?detectLang(x.text):$('langSelect').value),u=new SpeechSynthesisUtterance(convertHanja(x.text,l));u.lang=langMap[l];u.rate=+$('speedSelect').value;const v=voiceForAuto(u.lang,x.gender);if(v)u.voice=v;$("dialogueProgress").textContent=`${dialogueIndex+1} / ${dialogueLines.length} · ${x.gender==='male'?'👨 男声':'👩 女声'} · ${langMap[l]} · ${v?v.name:'系统默认语言源'} · 自动`;u.onstart=()=>status.textContent=`正在朗读 ${dialogueIndex+1}/${dialogueLines.length}…`;u.onend=()=>{dialogueIndex++;dialogueTimer=setTimeout(nextDialogue,120)};u.onerror=()=>{dialogueIndex++;dialogueTimer=setTimeout(nextDialogue,120)};speechSynthesis.cancel();speechSynthesis.speak(u)}
 $('fileInput').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;currentFile=f.name;$('title').textContent=f.name;status.textContent='正在读取…';let html='';try{if(/\.pdf$/i.test(f.name)){const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let pages=[];for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i),c=await p.getTextContent();pages.push(c.items.map(x=>x.str).join(' '))}currentText=pages.join('\n\n');html=currentText.split(/\n+/).map(x=>'<p>'+escapeHtml(x)+'</p>').join('')}else if(/\.docx$/i.test(f.name)){const r=await mammoth.convertToHtml({arrayBuffer:await f.arrayBuffer()});html=r.value;currentText=readerText(html)}else if(/\.html?$/i.test(f.name)){html=await f.text();currentText=readerText(html)}else{currentText=await f.text();html=currentText.split(/\n+/).map(x=>'<p>'+escapeHtml(x)+'</p>').join('')}reader.innerHTML=html||'<p>文件没有可显示的文本。</p>';addFile(f.name);status.textContent='读取完成'}catch(err){status.textContent='读取失败：'+err.message}});
 function readerText(h){const d=document.createElement('div');d.innerHTML=h;return d.innerText}function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function addFile(n){const d=document.createElement('div');d.className='file-item active';d.textContent=n;$('fileList').appendChild(d)}
 function selected(){return String(getSelection()).trim()}$('readSelection').onclick=()=>speak(selected(),$('langSelect').value);$('selectionSpeak').onclick=()=>{speak(selected(),$('langSelect').value);$('selectionToolbar').style.display='none'};$('selectionCopy').onclick=async()=>{await navigator.clipboard.writeText(selected());$('selectionToolbar').style.display='none';status.textContent='已复制'};
