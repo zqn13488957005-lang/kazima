@@ -1,5 +1,31 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LinguaReader 多语言阅读器</title><style>*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f7fb;color:#1f2937}.app{display:flex;height:100vh}.sidebar{width:260px;background:#fff;border-right:1px solid #e5e7eb;padding:18px;overflow:auto}.main{flex:1;display:flex;flex-direction:column;min-width:0}.header,.toolbar,.dialogue-panel{background:#fff;border-bottom:1px solid #e5e7eb}.header{padding:14px 20px;display:flex;justify-content:space-between}.header h1{margin:0;font-size:20px}.toolbar{padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap}.toolbar button,.toolbar select{padding:7px 10px;border:1px solid #d1d5db;border-radius:7px;background:#fff;cursor:pointer}.brand{font-size:22px;font-weight:800;margin-bottom:18px}.upload{display:block;background:#2563eb;color:#fff;text-align:center;padding:11px;border-radius:9px;cursor:pointer}.upload input{display:none}.file-item{padding:9px;border-radius:8px;cursor:pointer}.file-item:hover,.file-item.active{background:#eef2ff}.library{margin-top:20px}.library h3{font-size:14px}.library button{display:block;width:100%;margin:5px 0;padding:8px;text-align:left;border:1px solid #e5e7eb;background:transparent;border-radius:7px;cursor:pointer}.reader-wrap{flex:1;overflow:auto;background:#fff;padding:35px}.reader{max-width:900px;margin:auto;font-size:18px;line-height:1.9}.reader p{margin:0 0 14px}.status{padding:7px 16px;background:#f3f4f6;color:#6b7280;font-size:13px}.selection-toolbar{position:fixed;display:none;background:#111827;color:#fff;border-radius:8px;padding:6px;z-index:20}.selection-toolbar button{background:transparent;color:#fff;border:0;padding:6px;cursor:pointer}.dialogue-panel{display:none;padding:12px 16px}.dialogue-panel.show{display:block}.dialogue-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.dialogue-progress{margin-top:8px;color:#6b7280;font-size:13px}.dialogue-options{margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}.auto-badge{padding:6px 9px;border-radius:7px;background:#eef2ff;color:#3730a3;font-weight:600}.dark{background:#111827;color:#e5e7eb}.dark .sidebar,.dark .header,.dark .toolbar,.dark .dialogue-panel,.dark .reader-wrap{background:#1f2937;border-color:#374151}.dark .toolbar button,.dark .toolbar select{background:#111827;color:#e5e7eb;border-color:#4b5563}.dark .status{background:#111827}.dark .file-item:hover,.dark .file-item.active{background:#374151}.dark .auto-badge{background:#312e81;color:#e0e7ff}@media(max-width:700px){.sidebar{width:190px}.reader-wrap{padding:20px}.reader{font-size:16px}}</style><script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script></head><body><div class="app"><aside class="sidebar"><div class="brand">📖 LinguaReader</div><label class="upload">＋ 上传文档<input id="fileInput" type="file" accept=".txt,.html,.htm,.pdf,.docx"></label><div id="fileList"></div><div class="library"><h3>日常对话</h3><div id="library"></div></div></aside><section class="main"><header class="header"><h1 id="title">请选择一个文档开始阅读</h1><button id="darkToggle">🌙</button></header><div class="toolbar"><button id="readSelection">🔊 朗读选中</button><button id="pauseBtn">⏸ 暂停</button><button id="resumeBtn">▶ 继续</button><button id="stopBtn">⏹ 停止</button><select id="langSelect"><option value="auto">自动识别</option><option value="zh">中文</option><option value="en">English</option><option value="ja">日本語</option><option value="ko">한국어</option></select><select id="speedSelect"><option value="0.5">0.5x</option><option value="0.75">0.75x</option><option value="1" selected>1x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2">2x</option></select><button id="zoomOut">A−</button><button id="zoomIn">A＋</button><button id="dialogueToggle">💬 对话朗读</button></div><div class="dialogue-panel" id="dialoguePanel"><div class="dialogue-row"><span class="auto-badge">🤖 男女声 + 语言源自动选择</span><button id="startDialogue">▶ 开始对话朗读</button></div><div class="dialogue-options"><label><input id="dialogueAutoLang" type="checkbox" checked> 自动识别每句话语言</label><span>男/女声音源会按当前句子的中文 / English / 日本語 / 한국어自动匹配</span></div><div class="dialogue-progress" id="dialogueProgress">A/M/男/Male → 男声 · B/F/女/Female → 女声 · 不朗读角色标签</div></div><div class="reader-wrap"><article class="reader" id="reader"><p>上传 TXT、HTML、PDF 或 DOCX 文件后，内容会显示在这里。鼠标选中文字即可朗读或复制。</p></article></div><div class="status" id="status">就绪</div></section></div><div class="selection-toolbar" id="selectionToolbar"><button id="selectionSpeak">🔊 朗读</button><button id="selectionCopy">📋 复制</button></div><script>
-const $=id=>document.getElementById(id),reader=$("reader"),status=$("status");let currentText="",currentFile="",zoom=18,voices=[],dialogueLines=[],dialogueIndex=0,dialogueTimer=null;
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LinguaReader 多语言阅读器</title><style>*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f7fb;color:#1f2937}.app{display:flex;height:100vh}.sidebar{width:260px;background:#fff;border-right:1px solid #e5e7eb;padding:18px;overflow:auto}.main{flex:1;display:flex;flex-direction:column;min-width:0}.header,.toolbar,.dialogue-panel{background:#fff;border-bottom:1px solid #e5e7eb}.header{padding:14px 20px;display:flex;justify-content:space-between}.header h1{margin:0;font-size:20px}.toolbar{padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap}.toolbar button,.toolbar select{padding:7px 10px;border:1px solid #d1d5db;border-radius:7px;background:#fff;cursor:pointer}.brand{font-size:22px;font-weight:800;margin-bottom:18px}.upload{display:block;background:#2563eb;color:#fff;text-align:center;padding:11px;border-radius:9px;cursor:pointer}.upload input{display:none}.file-item{padding:9px;border-radius:8px;cursor:pointer}.file-item:hover,.file-item.active{background:#eef2ff}.library{margin-top:20px}.library h3{font-size:14px}.library button{display:block;width:100%;margin:5px 0;padding:8px;text-align:left;border:1px solid #e5e7eb;background:transparent;border-radius:7px;cursor:pointer}.reader-wrap{flex:1;overflow:auto;background:#fff;padding:35px}.reader{max-width:900px;margin:auto;font-size:18px;line-height:1.9}.reader p{margin:0 0 14px}.status{padding:7px 16px;background:#f3f4f6;color:#6b7280;font-size:13px}.selection-toolbar{position:fixed;display:none;background:#111827;color:#fff;border-radius:8px;padding:6px;z-index:20}.selection-toolbar button{background:transparent;color:#fff;border:0;padding:6px;cursor:pointer}.dialogue-panel{display:none;padding:12px 16px}.dialogue-panel.show{display:block}.dialogue-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.dialogue-progress{margin-top:8px;color:#6b7280;font-size:13px}.dialogue-options{margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}.auto-badge{padding:6px 9px;border-radius:7px;background:#eef2ff;color:#3730a3;font-weight:600}.dark{background:#111827;color:#e5e7eb}.dark .sidebar,.dark .header,.dark .toolbar,.dark .dialogue-panel,.dark .reader-wrap{background:#1f2937;border-color:#374151}.dark .toolbar button,.dark .toolbar select{background:#111827;color:#e5e7eb;border-color:#4b5563}.dark .status{background:#111827}.dark .file-item:hover,.dark .file-item.active{background:#374151}.dark .auto-badge{background:#312e81;color:#e0e7ff}@media(max-width:700px){.sidebar{width:190px}.reader-wrap{padding:20px}.reader{font-size:16px}}
+.compare-panel{display:none;flex:1;min-height:0;overflow:hidden;background:#f5f7fb}
+.compare-panel.show{display:flex}
+.compare-pane{flex:1;min-width:0;overflow:auto;background:#fff}
+.compare-pane:first-child{border-right:1px solid #e5e7eb}
+.compare-head{position:sticky;top:0;z-index:2;padding:12px 18px;background:#fff;border-bottom:1px solid #e5e7eb;font-weight:700}
+.compare-content{padding:28px 38px;line-height:1.9;font-size:18px;max-width:900px;margin:auto}
+.compare-content p{margin:0 0 16px}
+.compare-content .pair{padding:10px 0;border-bottom:1px dashed #e5e7eb}
+.compare-content .pair:last-child{border-bottom:0}
+.translate-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 16px;background:#fff;border-bottom:1px solid #e5e7eb}
+.translate-tools select,.translate-tools button{padding:7px 10px;border:1px solid #d1d5db;border-radius:7px;background:#fff;cursor:pointer}
+.compare-loading{color:#6b7280}
+.dark .compare-panel,.dark .compare-pane,.dark .compare-head,.dark .translate-tools{background:#1f2937;color:#e5e7eb;border-color:#374151}
+.dark .compare-content .pair{border-color:#374151}
+@media(max-width:700px){.compare-panel{flex-direction:column}.compare-pane:first-child{border-right:0;border-bottom:1px solid #374151;min-height:45vh}.compare-content{padding:20px;font-size:16px}}
+</style><script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script></head><body><div class="app"><aside class="sidebar"><div class="brand">📖 LinguaReader</div><label class="upload">＋ 上传文档<input id="fileInput" type="file" accept=".txt,.html,.htm,.pdf,.docx"></label><div id="fileList"></div><div class="library"><h3>日常对话</h3><div id="library"></div></div></aside><section class="main"><header class="header"><h1 id="title">请选择一个文档开始阅读</h1><button id="darkToggle">🌙</button></header><div class="toolbar"><button id="readSelection">🔊 朗读选中</button><button id="pauseBtn">⏸ 暂停</button><button id="resumeBtn">▶ 继续</button><button id="stopBtn">⏹ 停止</button><select id="langSelect"><option value="auto">自动识别</option><option value="zh">中文</option><option value="en">English</option><option value="ja">日本語</option><option value="ko">한국어</option></select><select id="speedSelect"><option value="0.5">0.5x</option><option value="0.75">0.75x</option><option value="1" selected>1x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2">2x</option></select><button id="zoomOut">A−</button><button id="zoomIn">A＋</button><button id="dialogueToggle">💬 对话朗读</button><button id="compareToggle">⇄ 对照阅读</button></div><div class="dialogue-panel" id="dialoguePanel"><div class="dialogue-row"><span class="auto-badge">🤖 男女声 + 语言源自动选择</span><button id="startDialogue">▶ 开始对话朗读</button></div><div class="dialogue-options"><label><input id="dialogueAutoLang" type="checkbox" checked> 自动识别每句话语言</label><span>男/女声音源会按当前句子的中文 / English / 日本語 / 한국어自动匹配</span></div><div class="dialogue-progress" id="dialogueProgress">A/M/男/Male → 男声 · B/F/女/Female → 女声 · 不朗读角色标签</div></div><div class="translate-tools" id="translateTools" style="display:none">
+<span>🌐 翻译：</span>
+<select id="translateTarget"><option value="zh-CN">🇨🇳 中文</option><option value="en">🇺🇸 English</option><option value="ja">🇯🇵 日本語</option><option value="ko">🇰🇷 한국어</option></select>
+<button id="translateBtn">🔄 翻译全文</button><button id="translateSwap">⇄ 交换</button>
+<span id="translateStatus" class="compare-loading">翻译服务：MyMemory</span>
+</div>
+<div class="compare-panel" id="comparePanel">
+<div class="compare-pane"><div class="compare-head" id="originalHead">📄 原文</div><div class="compare-content" id="originalContent"></div></div>
+<div class="compare-pane"><div class="compare-head" id="translationHead">🇨🇳 中文翻译</div><div class="compare-content" id="translationContent"><p class="compare-loading">点击「翻译全文」生成对应翻译。</p></div></div>
+</div><div class="reader-wrap"><article class="reader" id="reader"><p>上传 TXT、HTML、PDF 或 DOCX 文件后，内容会显示在这里。鼠标选中文字即可朗读或复制。</p></article></div><div class="status" id="status">就绪</div></section></div><div class="selection-toolbar" id="selectionToolbar"><button id="selectionSpeak">🔊 朗读</button><button id="selectionCopy">📋 复制</button></div><script>
+const $=id=>document.getElementById(id),reader=$("reader"),status=$("status");
+let compareMode=false, compareParagraphs=[], sourceLangForTranslation="auto";let currentText="",currentFile="",zoom=18,voices=[],dialogueLines=[],dialogueIndex=0,dialogueTimer=null;
 const langMap={zh:"zh-CN",en:"en-US",ja:"ja-JP",ko:"ko-KR"};
 function detectLang(t){if(/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(t))return"ko";if(/[ぁ-んァ-ヶー]/.test(t))return"ja";if(/[\u4e00-\u9fff]/.test(t))return"zh";return"en"}
 function convertHanja(t,l){if(l!=="ko")return t;const m={"韓國":"한국","大韓民國":"대한민국","日本":"일본","中國":"중국","美國":"미국","學生":"학생","學校":"학교","電話":"전화","時間":"시간","食堂":"식당","朋友":"친구","旅行":"여행","公司":"회사"};for(const a in m)t=t.split(a).join(m[a]);return t}
@@ -50,10 +76,90 @@ function speak(text,lang="auto",gender=null){speechSynthesis.cancel();if(!text)r
 function parseDialogue(t){return t.split(/\r?\n/).map(x=>{const m=x.match(/^\s*(A|B|男|女|Male|Female|M|F)\s*[:：-]\s*(.+)$/i);if(!m)return null;const s=m[1].toLowerCase();return{gender:["a","男","male","m"].includes(s)?"male":"female",text:m[2].trim()}}).filter(Boolean)}
 function startDialogue(){clearTimeout(dialogueTimer);speechSynthesis.cancel();const a=parseDialogue(reader.innerText||currentText);if(!a.length){status.textContent="未检测到对话格式，例如 A: Hello / B: Hi";return}dialogueLines=a;dialogueIndex=0;nextDialogue()}
 function nextDialogue(){if(dialogueIndex>=dialogueLines.length){status.textContent="对话朗读完成";$("dialogueProgress").textContent=`完成 · 共 ${dialogueLines.length} 句`;return}const x=dialogueLines[dialogueIndex],auto=$("dialogueAutoLang").checked,l=auto?detectLang(x.text):($('langSelect').value==='auto'?detectLang(x.text):$('langSelect').value),u=new SpeechSynthesisUtterance(convertHanja(x.text,l));u.lang=langMap[l];u.rate=+$('speedSelect').value;const v=voiceForAuto(u.lang,x.gender);if(v)u.voice=v;$("dialogueProgress").textContent=`${dialogueIndex+1} / ${dialogueLines.length} · ${x.gender==='male'?'👨 男声':'👩 女声'} · ${langMap[l]} · ${v?v.name:'系统默认语言源'} · 自动`;u.onstart=()=>status.textContent=`正在朗读 ${dialogueIndex+1}/${dialogueLines.length}…`;u.onend=()=>{dialogueIndex++;dialogueTimer=setTimeout(nextDialogue,120)};u.onerror=()=>{dialogueIndex++;dialogueTimer=setTimeout(nextDialogue,120)};speechSynthesis.cancel();speechSynthesis.speak(u)}
-$('fileInput').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;currentFile=f.name;$('title').textContent=f.name;status.textContent='正在读取…';let html='';try{if(/\.pdf$/i.test(f.name)){const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let pages=[];for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i),c=await p.getTextContent();pages.push(c.items.map(x=>x.str).join(' '))}currentText=pages.join('\n\n');html=currentText.split(/\n+/).map(x=>'<p>'+escapeHtml(x)+'</p>').join('')}else if(/\.docx$/i.test(f.name)){const r=await mammoth.convertToHtml({arrayBuffer:await f.arrayBuffer()});html=r.value;currentText=readerText(html)}else if(/\.html?$/i.test(f.name)){html=await f.text();currentText=readerText(html)}else{currentText=await f.text();html=currentText.split(/\n+/).map(x=>'<p>'+escapeHtml(x)+'</p>').join('')}reader.innerHTML=html||'<p>文件没有可显示的文本。</p>';addFile(f.name);status.textContent='读取完成'}catch(err){status.textContent='读取失败：'+err.message}});
-function readerText(h){const d=document.createElement('div');d.innerHTML=h;return d.innerText}function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function addFile(n){const d=document.createElement('div');d.className='file-item active';d.textContent=n;$('fileList').appendChild(d)}
+$('fileInput').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;currentFile=f.name;$('title').textContent=f.name;status.textContent='正在读取…';let html='';try{if(/\.pdf$/i.test(f.name)){const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let pages=[];for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i),c=await p.getTextContent();pages.push(c.items.map(x=>x.str).join(' '))}currentText=pages.join('\n\n');html=currentText.split(/\n+/).map(x=>'<p>'+escapeHtml(x)+'</p>').join('')}else if(/\.docx$/i.test(f.name)){const r=await mammoth.convertToHtml({arrayBuffer:await f.arrayBuffer()});html=r.value;currentText=readerText(html)}else if(/\.html?$/i.test(f.name)){html=await f.text();currentText=readerText(html)}else{currentText=await f.text();html=currentText.split(/\n+/).map(x=>'<p>'+escapeHtml(x)+'</p>').join('')}reader.innerHTML=html||'<p>文件没有可显示的文本。</p>';compareParagraphs=splitReadableText(currentText||reader.innerText);if(compareMode)renderCompareOriginal();addFile(f.name);status.textContent='读取完成'}catch(err){status.textContent='读取失败：'+err.message}});
+function readerText(h){const d=document.createElement('div');d.innerHTML=h;return d.innerText}
+function getTargetName(code){return { "zh-CN":"中文","en":"English","ja":"日本語","ko":"한국어" }[code]||code}
+function splitReadableText(t){
+  return t.split(/\\r?\\n+/).map(x=>x.trim()).filter(Boolean);
+}
+function getCurrentReadableText(){
+  const t=(currentText||reader.innerText||"").trim();
+  return t;
+}
+function escapeForCompare(s){return escapeHtml(s).replace(/\\n/g,"<br>")}
+function renderCompareOriginal(){
+  const arr=compareParagraphs.length?compareParagraphs:splitReadableText(getCurrentReadableText());
+  compareParagraphs=arr;
+  $("originalContent").innerHTML=arr.map((p,i)=>'<div class="pair" data-index="'+i+'"><p>'+escapeForCompare(p)+'</p></div>').join("")||'<p class="compare-loading">请先上传文档。</p>';
+  $("originalHead").textContent="📄 原文 · "+(arr.length?arr.length+" 段":"");
+}
+async function translateOne(text,from,to){
+  if(!text.trim())return "";
+  const url="https://api.mymemory.translated.net/get?q="+encodeURIComponent(text.slice(0,4500))+"&langpair="+encodeURIComponent(from+"|"+to);
+  const r=await fetch(url);
+  if(!r.ok)throw new Error("翻译服务请求失败");
+  const j=await r.json();
+  if(!j.responseData||!j.responseData.translatedText)throw new Error("没有翻译结果");
+  return j.responseData.translatedText;
+}
+async function translateAll(){
+  const arr=compareParagraphs.length?compareParagraphs:splitReadableText(getCurrentReadableText());
+  if(!arr.length){status.textContent="请先上传文档";return}
+  compareParagraphs=arr;
+  const target=$("translateTarget").value;
+  let source=detectLang(arr.join(" "));
+  if($("langSelect").value!=="auto")source=$("langSelect").value;
+  const sourceApi=source==="zh"?"zh-CN":source;
+  if(sourceApi===target){$("translationContent").innerHTML=arr.map((p,i)=>'<div class="pair"><p>'+escapeForCompare(p)+'</p></div>').join("");$("translateStatus").textContent="原文与目标语言相同";return}
+  $("translationContent").innerHTML='<p class="compare-loading">正在翻译 '+arr.length+' 段…</p>';
+  $("translateStatus").textContent="正在翻译…";
+  const out=[];
+  try{
+    for(let i=0;i<arr.length;i++){
+      $("translateStatus").textContent="正在翻译 "+(i+1)+"/"+arr.length+"…";
+      const translated=await translateOne(arr[i],sourceApi,target);
+      out.push(translated);
+    }
+    $("translationContent").innerHTML=out.map((p,i)=>'<div class="pair" data-index="'+i+'"><p>'+escapeForCompare(p)+'</p></div>').join("");
+    $("translationHead").textContent="🌐 "+getTargetName(target)+" · "+out.length+" 段";
+    $("translateStatus").textContent="翻译完成";
+  }catch(e){
+    console.error(e);
+    $("translationContent").innerHTML='<p>翻译失败。可能是公共翻译服务暂时限制请求，请稍后重试。</p>';
+    $("translateStatus").textContent="翻译失败";
+  }
+}
+function toggleCompare(){
+  compareMode=!compareMode;
+  $("comparePanel").classList.toggle("show",compareMode);
+  $("translateTools").style.display=compareMode?"flex":"none";
+  $("reader").parentElement.style.display=compareMode?"none":"block";
+  $("compareToggle").textContent=compareMode?"📖 返回阅读":"⇄ 对照阅读";
+  if(compareMode)renderCompareOriginal();
+}
+$("compareToggle").onclick=toggleCompare;
+$("translateBtn").onclick=translateAll;
+$("translateSwap").onclick=()=>{
+  const t=$("translateTarget");
+  const current=$("langSelect").value;
+  const target=t.value;
+  if(current!=="auto"&&langMap[current]!==target){
+    const map={"zh-CN":"zh","en":"en","ja":"ja","ko":"ko"};
+    $("langSelect").value=map[target]||"auto";
+  }
+  translateAll();
+};
+
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function addFile(n){const d=document.createElement('div');d.className='file-item active';d.textContent=n;$('fileList').appendChild(d)}
 function selected(){return String(getSelection()).trim()}$('readSelection').onclick=()=>speak(selected(),$('langSelect').value);$('selectionSpeak').onclick=()=>{speak(selected(),$('langSelect').value);$('selectionToolbar').style.display='none'};$('selectionCopy').onclick=async()=>{await navigator.clipboard.writeText(selected());$('selectionToolbar').style.display='none';status.textContent='已复制'};
+
+document.addEventListener("click",e=>{
+  const pair=e.target.closest(".pair"); if(!pair)return;
+  const i=pair.dataset.index;
+  document.querySelectorAll(".compare-content .pair").forEach(x=>x.style.outline="");
+  document.querySelectorAll('.compare-content .pair[data-index="'+i+'"]').forEach(x=>{x.style.outline="2px solid #6366f1";x.scrollIntoView({behavior:"smooth",block:"center"})});
+});
 document.addEventListener('selectionchange',()=>{const s=selected();if(!s){$('selectionToolbar').style.display='none';return}const sel=getSelection();if(!sel.rangeCount)return;const r=sel.getRangeAt(0).getBoundingClientRect();$('selectionToolbar').style.left=(r.left+r.width/2-60)+'px';$('selectionToolbar').style.top=Math.max(8,r.top-48)+'px';$('selectionToolbar').style.display='flex'});
 $('pauseBtn').onclick=()=>speechSynthesis.pause();$('resumeBtn').onclick=()=>speechSynthesis.resume();$('stopBtn').onclick=()=>{clearTimeout(dialogueTimer);dialogueLines=[];speechSynthesis.cancel();status.textContent='已停止'};$('zoomIn').onclick=()=>{zoom=Math.min(32,zoom+2);reader.style.fontSize=zoom+'px'};$('zoomOut').onclick=()=>{zoom=Math.max(12,zoom-2);reader.style.fontSize=zoom+'px'};$('darkToggle').onclick=()=>document.body.classList.toggle('dark');$('dialogueToggle').onclick=()=>$('dialoguePanel').classList.toggle('show');$('startDialogue').onclick=startDialogue;document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();startDialogue()}});speechSynthesis.onvoiceschanged=refreshVoices;refreshVoices();
-const demos=[['英语：便利店','A: Hi, do you have bottled water?\nB: Yes. It is in aisle three.\nA: Great, thank you.'],['日语：便利店','A: すみません、水はありますか？\nB: はい、三番通路です。\nA: ありがとうございます。'],['韩语：便利店','A: 안녕하세요. 생수 있어요?\nB: 네, 3번 통로에 있어요.\nA: 감사합니다.'],['混合语言：旅行','A: 你好，请问车站在哪里？\nB: すみません、駅はあちらです。\nA: Thank you!\nB: 천만에요.']];demos.forEach(([n,t])=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>{reader.innerHTML=t.split('\n').map(x=>'<p>'+escapeHtml(x)+'</p>').join('');currentText=t;$('title').textContent=n};$('library').appendChild(b)});
+const demos=[['英语：便利店','A: Hi, do you have bottled water?\nB: Yes. It is in aisle three.\nA: Great, thank you.'],['日语：便利店','A: すみません、水はありますか？\nB: はい、三番通路です。\nA: ありがとうございます。'],['韩语：便利店','A: 안녕하세요. 생수 있어요?\nB: 네, 3번 통로에 있어요.\nA: 감사합니다.'],['混合语言：旅行','A: 你好，请问车站在哪里？\nB: すみません、駅はあちらです。\nA: Thank you!\nB: 천만에요.']];demos.forEach(([n,t])=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>{reader.innerHTML=t.split('\n').map(x=>'<p>'+escapeHtml(x)+'</p>').join('');currentText=t;compareParagraphs=splitReadableText(t);$('title').textContent=n;if(compareMode)renderCompareOriginal()};$('library').appendChild(b)});
 </script></body></html>
