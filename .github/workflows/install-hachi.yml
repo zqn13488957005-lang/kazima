@@ -13,15 +13,10 @@ jobs:
         shell: bash
         run: |
           if ! grep -q 'hachi-assistant.js' index.html; then
-            python3 - <<'PY'
-from pathlib import Path
-p=Path('index.html')
-s=p.read_text(encoding='utf-8')
-s=s.replace('</body>','<script src="hachi-assistant.js"></script></body>')
-p.write_text(s,encoding='utf-8')
-PY
+            python3 -c "from pathlib import Path; p=Path('index.html'); s=p.read_text(encoding='utf-8'); p.write_text(s.replace('</body>','<script src=\"hachi-assistant.js\"></script></body>'),encoding='utf-8')"
           fi
       - name: Commit change
+        shell: bash
         run: |
           if git diff --quiet; then exit 0; fi
           git config user.name 'github-actions[bot]'
