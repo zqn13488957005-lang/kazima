@@ -1,8 +1,7 @@
-/* LinguaReader TTS: Kokoro-82M browser engine. Uses WebGPU when available and falls back to WASM/system speech. */
+/* LinguaReader TTS: Kokoro-82M browser engine. WebGPU first, WASM fallback. */
 (()=>{
   const MODEL='onnx-community/Kokoro-82M-ONNX';
   const VOICE={en:{female:'af_heart',male:'am_adam'},ja:{female:'jf_alpha',male:'jm_kumo'},zh:{female:'zf_xiaobei',male:'zm_yunyang'},ko:{female:'jf_alpha',male:'jm_kumo'}};
-  const LANG={zh:'zh',en:'en',ja:'ja',ko:'ko'};
   let enginePromise=null,currentAudio=null,currentToken=0;
   const detect=text=>{if(/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(text))return'ko';if(/[ぁ-んァ-ヶー]/.test(text))return'ja';if(/[\u4e00-\u9fff]/.test(text))return'zh';return'en'};
   async function load(){
@@ -41,7 +40,5 @@
   }
   function stop(){currentToken++;stopAudio()}
   window.KokoroTTS=window.KokoroTTS||{load,speak,stop,detect,isReady:()=>!!enginePromise};
-  /* Keep the old SupertonicTTS API name so neural-dialogue.js can use Kokoro without changing dialogue logic. */
-  window.SupertonicTTS=window.KokoroTTS;
   const s=document.createElement('script');s.src='neural-dialogue.js';s.async=false;document.head.appendChild(s);
 })();
