@@ -16,7 +16,7 @@
     }
     return enginePromise;
   }
-  async function playResult(result,token){
+  async function playResult(result,token,onend){
     const wav=result?.wav;
     if(!wav||token!==currentToken)throw new Error('No audio generated');
     let blob;
@@ -27,11 +27,11 @@
     const url=URL.createObjectURL(blob);
     const audio=new Audio(url);
     currentAudio=audio;
-    audio.onended=()=>{URL.revokeObjectURL(url);if(currentAudio===audio)currentAudio=null};
+    audio.onended=()=>{URL.revokeObjectURL(url);if(currentAudio===audio)currentAudio=null;if(typeof onend==='function')onend()};
     await audio.play();
     return audio;
   }
-  async function speak(text,lang='auto',gender='female'){
+  async function speak(text,lang='auto',gender='female',onend=null){
     if(!text)return false;
     const token=++currentToken;
     if(currentAudio){try{currentAudio.pause();currentAudio.currentTime=0}catch(e){}currentAudio=null}
@@ -43,7 +43,7 @@
       const options={lang:l,speed:Math.max(.7,Math.min(1.8,Number(document.getElementById('speedSelect')?.value||1)))};
       if(style)options.style=style;
       const result=await tts.synthesize(String(text),options);
-      await playResult(result,token);
+      await playResult(result,token,onend);
       return true;
     }catch(e){
       console.warn('[LinguaReader] Supertonic TTS failed, fallback to browser voice:',e);
