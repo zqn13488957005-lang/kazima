@@ -6,7 +6,8 @@
     const u=new SpeechSynthesisUtterance(convertHanja(text,lang));
     u.lang=fallbackLang[lang]||'ja-JP';
     u.rate=Number(document.getElementById('speedSelect')?.value||1)*0.94;
-    u.pitch=gender==='male'?(baseLang(lang)==='ja'||baseLang(lang)==='ko'?.98:.95):(baseLang(lang)==='ja'||baseLang(lang)==='ko'?1.04:1.10);
+    const b=baseLang(lang);
+    u.pitch=gender==='male'?((b==='ja'||b==='ko')?.98:.95):((b==='ja'||b==='ko')?1.04:1.10);
     const voices=speechSynthesis.getVoices();
     const hints=gender==='male'?['ichiro','naoki','kenji','takumi','keita','injoon','seojun','sangho','hyunwoo','david','daniel','james','george','thomas']:['nanami','haruka','ayumi','mizuki','sayaka','tomoko','yuna','sunhi','heami','zira','samantha','susan','jenny','aria','sara','victoria','ava','emma','olivia'];
     const v=voices.find(x=>baseLang(x.lang)===baseLang(u.lang)&&hints.some(h=>String(x.name).toLowerCase().includes(h)));
