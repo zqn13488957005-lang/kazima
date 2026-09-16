@@ -52,4 +52,5 @@
   }
   function stop(){currentToken++;if(currentAudio){try{currentAudio.pause();currentAudio.currentTime=0}catch(e){}currentAudio=null}}
   window.SupertonicTTS={load,speak,stop,detect,isReady:()=>!!enginePromise};
+  const s=document.createElement('script');s.src='neural-dialogue.js';s.async=false;document.head.appendChild(s);
 })();
